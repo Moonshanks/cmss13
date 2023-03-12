@@ -73,6 +73,18 @@
 		GLOB.nightmare_landmarks.Remove(insert_tag)
 	return ..()
 
+//shipside explosion locations
+/obj/effect/landmark/explosion_site
+	name = "Explosion Site"
+
+/obj/effect/landmark/explosion_site/Initialize(mapload, ...)
+	. = ..()
+	GLOB.exploding_landmarks += src
+
+/obj/effect/landmark/explosion_site/Destroy()
+	. = ..()
+	GLOB.exploding_landmarks -= src
+
 /obj/effect/landmark/ert_spawns/distress
 	name = "Distress"
 
