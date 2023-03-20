@@ -19,6 +19,46 @@ GLOBAL_VAR_INIT(alt_ctrl_disabled, FALSE)
 GLOBAL_VAR_INIT(ship_temp, 0)
 GLOBAL_VAR_INIT(ship_alt, SHIP_ALT_MED)
 
+//Handles how close to the MAXIMUM values the: heating, cooldowns, and fuel use, are based on how well the nav officer has completed their minigame, bound between 0.5 - 2 (with 0.5 being 50% better and 2 being 100% worse so that a shit navigations officer is worse than NO navigations officer.)
+var/engine_efficiency = 1
+
+
+//Handles the minigame for the nav officer making the engines more "efficient"
+
+var/primary_engine_freq = 0
+var/secondary_engine_freq = 0
+var/primary_engine_freq_guess = 0
+var/secondary_engine_freq_guess = 0
+
+//Handles whether or not the ship can overheat - enables and disables the Navigation Officers controls
+var/saftey_on = TRUE
+
+//the check for the calculate button being pressed
+var/calculate = FALSE
+/obj/structure/machinery/computer/engine_control_console
+	icon_state = "overwatch"
+	name = "Engine Control Console"
+	desc = "The E.C.C console monitors, regulates, and updates the ships thrust vectors and engine perameters. It's only rocket science."
+
+/obj/structure/machinery/computer/altitude_control_console/attack_hand()
+	. = ..()
+	if(!skillcheck(usr, SKILL_NAVIGATIONS, SKILL_NAVIGATIONS_MASTER))
+		to_chat(usr, SPAN_WARNING("A window of complex engine thrust calculations opens up. You have no idea what you are doing and quickly close it."))
+		return
+	if(GLOB.alt_ctrl_disabled)
+		to_chat(usr, SPAN_WARNING("The Engine Control Console has been locked by ARES due to Delta Alert."))
+		return
+	if(saftey_on)
+		to_chat(usr, SPAN_WARNING("You cannot modify the engines thrust profiles without first disabling the saftey overrides."))
+		return
+	tgui_interact(usr)
+
+//the next bit handles the logic for the navigations minigame. It takes how close the two "frequencies" are to the true frequency as a percentage, and uses the average of these two percentages to edit the "engine_efficiency" var.
+/obj/structure/machinery/computer/engine_control_console/process()
+	. = ..()
+	if(calculate)
+		engine_efficiency = (abs(primary_engine_freq_guess / primary_engine_freq) + abs(secondary_engine_freq_guess / secondary_engine_freq)) / 2
+		calculate = FALSE
 /obj/structure/machinery/computer/altitude_control_console
 	icon_state = "overwatch"
 	name = "Altitude Control Console"
@@ -40,17 +80,22 @@ GLOBAL_VAR_INIT(ship_alt, SHIP_ALT_MED)
 
 /obj/structure/machinery/computer/altitude_control_console/process()
 	. = ..()
-	var/temperature_change
 	if(GLOB.ship_temp >= OVERHEAT)
-		ai_silent_announcement("Attention: orbital correction no longer sustainable, moving to geo-synchronous orbit until engine cooloff.", ";", TRUE)
-		GLOB.ship_alt = SHIP_ALT_HIGH
-		temperature_change = OVERHEAT_COOLING
-		for(var/mob/living/carbon/current_mob in GLOB.living_mob_list)
-			if(!is_mainship_level(current_mob.z))
-				continue
-			current_mob.apply_effect(3, WEAKEN)
-			shake_camera(current_mob, 10, 2)
-		ai_silent_announcement("Attention performing high-G maneuverer", ";", TRUE)
+		landmark_explosions((GLOB.ship_temp - 80)/10, GLOB.ship_temp, 25)
+	var/temperature_change
+	if(saftey_on)
+		if(GLOB.ship_temp >= OVERHEAT)
+			TIMER_COOLDOWN_START(src, COOLDOWN_ALTITUDE_CHANGE, 180 SECONDS)
+			GLOB.ship_temp += 30
+			ai_silent_announcement("Attention: orbital correction no longer sustainable, moving to geo-synchronous orbit until engine cooloff.", ";", TRUE)
+			GLOB.ship_alt = SHIP_ALT_HIGH
+			temperature_change = OVERHEAT_COOLING
+			for(var/mob/living/carbon/current_mob in GLOB.living_mob_list)
+				if(!is_mainship_level(current_mob.z))
+					continue
+				current_mob.apply_effect(3, WEAKEN)
+				shake_camera(current_mob, 10, 2)
+			ai_silent_announcement("Attention performing high-G maneuverer", ";", TRUE)
 	if(!temperature_change)
 		switch(GLOB.ship_alt)
 			if(SHIP_ALT_LOW)
@@ -59,7 +104,7 @@ GLOBAL_VAR_INIT(ship_alt, SHIP_ALT_MED)
 				temperature_change = COOLING
 			if(SHIP_ALT_HIGH)
 				temperature_change = COOLING
-	GLOB.ship_temp = Clamp(GLOB.ship_temp += temperature_change, 0, 120)
+	GLOB.ship_temp = Clamp(GLOB.ship_temp += temperature_change, 0, 180)
 	if(prob(50))
 		return
 	if(GLOB.ship_alt == SHIP_ALT_LOW)
@@ -118,13 +163,35 @@ GLOBAL_VAR_INIT(ship_alt, SHIP_ALT_MED)
 	if(GLOB.ship_alt == new_altitude)
 		return
 	GLOB.ship_alt = new_altitude
-	TIMER_COOLDOWN_START(src, COOLDOWN_ALTITUDE_CHANGE, 90 SECONDS)
+	TIMER_COOLDOWN_START(src, COOLDOWN_ALTITUDE_CHANGE, 90 * engine_efficiency SECONDS)
+	GLOB.ship_temp += 30
 	for(var/mob/living/carbon/current_mob in GLOB.living_mob_list)
 		if(!is_mainship_level(current_mob.z))
 			continue
 		current_mob.apply_effect(3, WEAKEN)
 		shake_camera(current_mob, 10, 2)
 	ai_silent_announcement("Attention: Performing high-G manoeuvre", ";", TRUE)
+	if(!saftey_on)
+		primary_engine_freq = rand(0, 2)
+		secondary_engine_freq = rand(0, 2)
+
+
+//sets explosion chance and size, recommend you have this equal to a glob variable or something that changes.
+var/explosion_chance = 50
+var/explosion_power = 50
+var/explosion_falloff = 50
+
+//for the record I have no idea why these global vars need to be set on init when they are.. already set on init. Just Elsehwere in the code.
+GLOBAL_VAR_INIT(exploding_landmarks, 0)
+GLOBAL_VAR_INIT(shipside_apc_locations, 0)
+
+
+//This is just a proc so that anyone can explode a part of the ship whenever.
+
+datum/proc/landmark_explosions(explosion_chance, explosion_power, explosion_falloff)
+	if(prob(explosion_chance))
+		cell_explosion(pick(GLOB.exploding_landmarks), explosion_power, explosion_falloff)
+	return
 
 #undef COOLING
 #undef OVERHEAT_COOLING

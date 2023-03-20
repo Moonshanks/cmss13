@@ -160,7 +160,8 @@
 //Navigations skill - for seting orbital alt
 #define SKILL_NAVIGATIONS_DEFAULT 0
 #define SKILL_NAVIGATIONS_TRAINED 1
-#define SKILL_NAVIGATIONS_MAX 1
+#define SKILL_NAVIGATIONS_MASTER 2
+#define SKILL_NAVIGATIONS_MAX 2
 
 //endurance skill - Leaving surv for ease of change
 #define SKILL_ENDURANCE_NONE 0

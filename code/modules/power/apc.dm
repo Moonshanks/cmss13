@@ -137,6 +137,10 @@ GLOBAL_LIST_INIT(apc_wire_descriptions, list(
 /obj/structure/machinery/power/apc/Initialize(mapload, ndir, building=0)
 	. = ..()
 
+	//makes a list of all the shipside APCs so that we can destroy them at random later.
+	if(!is_mainship_level(z))
+		GLOB.shipside_apc_locations += src
+
 	//Offset 24 pixels in direction of dir
 	//This allows the APC to be embedded in a wall, yet still inside an area
 
@@ -175,6 +179,7 @@ GLOBAL_LIST_INIT(apc_wire_descriptions, list(
 	QDEL_NULL(cell)
 	area = null
 	. = ..()
+	GLOB.shipside_apc_locations -= src
 
 
 // TGUI SHIT \\
