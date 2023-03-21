@@ -169,10 +169,7 @@ var/total_overheat = FALSE
 			message_admins("[key_name(user)] has changed the ship's altitude to [action].")
 			. = TRUE
 		if("safety")
-			if(safety_on = TRUE)
-				safety_on = FALSE
-			if(safety_on = FALSE)
-				safety_on = TRUE
+			safety_on = !(safety_on)
 			ai_silent_announcement("Engine Automated Safeguards Disabled", ";", TRUE)
 			message_admins("[key_name(user)] has changed the engines safety toggle to [safety_on].")
 			. = TRUE
