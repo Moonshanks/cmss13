@@ -30,10 +30,10 @@ export const AltitudeControlConsole = (_props, context) => {
               fontSize="20px"
               textAlign="center"
               fluid
-              disabled={data.saftey === true}
-              content="Saftey Toggle"
+              disabled={data.safety === true}
+              content="safety Toggle"
               iconPosition="right"
-              onClick={() => act('saftey')}
+              onClick={() => act('safety')}
             />
           }
           {

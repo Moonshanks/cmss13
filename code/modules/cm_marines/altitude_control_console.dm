@@ -31,7 +31,7 @@ var/primary_engine_freq_guess = 0
 var/secondary_engine_freq_guess = 0
 
 //Handles whether or not the ship can overheat - enables and disables the Navigation Officers controls
-var/saftey_on = TRUE
+var/safety_on = TRUE
 
 //Handles if the console has totally broken down (reached 200% overheat)
 var/total_overheat = FALSE
@@ -51,8 +51,8 @@ var/total_overheat = FALSE
 	if(GLOB.alt_ctrl_disabled)
 		to_chat(usr, SPAN_WARNING("The Engine Control Console has been locked by ARES due to Delta Alert."))
 		return
-	if(saftey_on)
-		to_chat(usr, SPAN_WARNING("You cannot modify the engines thrust profiles without first disabling the saftey overrides."))
+	if(safety_on)
+		to_chat(usr, SPAN_WARNING("You cannot modify the engines thrust profiles without first disabling the safety overrides."))
 		return
 	tgui_interact(usr)
 
@@ -96,7 +96,7 @@ var/total_overheat = FALSE
 	if(GLOB.ship_temp >= OVERHEAT)
 		landmark_explosions((GLOB.ship_temp - 80)/10, GLOB.ship_temp, 25)
 	var/temperature_change
-	if(saftey_on)
+	if(safety_on)
 		if(GLOB.ship_temp >= OVERHEAT)
 			TIMER_COOLDOWN_START(src, COOLDOWN_ALTITUDE_CHANGE, 180 SECONDS)
 			GLOB.ship_temp += 30
@@ -168,13 +168,13 @@ var/total_overheat = FALSE
 			change_altitude(user, SHIP_ALT_HIGH)
 			message_admins("[key_name(user)] has changed the ship's altitude to [action].")
 			. = TRUE
-		if("saftey")
-			if(saftey_on = TRUE)
-				saftey_on = FALSE
-			if(saftey_on = FALSE)
-				saftey_on = TRUE
+		if("safety")
+			if(safety_on = TRUE)
+				safety_on = FALSE
+			if(safety_on = FALSE)
+				safety_on = TRUE
 			ai_silent_announcement("Engine Automated Safeguards Disabled", ";", TRUE)
-			message_admins("[key_name(user)] has changed the engines saftey toggle to [saftey_on].")
+			message_admins("[key_name(user)] has changed the engines safety toggle to [safety_on].")
 			. = TRUE
 
 	add_fingerprint(usr)
@@ -194,7 +194,7 @@ var/total_overheat = FALSE
 		current_mob.apply_effect(3, WEAKEN)
 		shake_camera(current_mob, 10, 2)
 	ai_silent_announcement("Attention: Performing high-G manoeuvre", ";", TRUE)
-	if(!saftey_on)
+	if(!safety_on)
 		primary_engine_freq = rand(0, 2)
 		secondary_engine_freq = rand(0, 2)
 	if(!skillcheck(usr, SKILL_NAVIGATIONS, SKILL_NAVIGATIONS_EXPERT))
