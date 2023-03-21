@@ -24,7 +24,7 @@ export const AltitudeControlConsole = (_props, context) => {
             </ProgressBar>
           </Box>
         </Section>
-        <Section title="Altitude Control">
+        <Section title="Safety Toggle">
           {
             <Button
               fontSize="20px"
@@ -36,6 +36,8 @@ export const AltitudeControlConsole = (_props, context) => {
               onClick={() => act('safety')}
             />
           }
+          </Section>
+          <Section title= "Altitude Controls"
           {
             <Button
               fontSize="20px"
