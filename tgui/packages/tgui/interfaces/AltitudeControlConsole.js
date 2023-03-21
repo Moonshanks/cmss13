@@ -31,13 +31,13 @@ export const AltitudeControlConsole = (_props, context) => {
               textAlign="center"
               fluid
               disabled={data.safety === true}
-              content="safety Toggle"
+              content="Safety Toggle"
               iconPosition="right"
               onClick={() => act('safety')}
             />
           }
-          </Section>
-          <Section title= "Altitude Controls"
+        </Section>
+        <Section title="Altitude Controls">
           {
             <Button
               fontSize="20px"
