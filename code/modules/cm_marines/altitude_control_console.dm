@@ -63,7 +63,12 @@ var/total_overheat = FALSE
 		total_overheat = TRUE
 		ai_announcement("ALERT: Total Failure of engine cooling systems. Boosting to higher orbit. Restricting all orbital manouvers")
 		GLOB.ship_alt = SHIP_ALT_HIGH
-
+	for(var/mob/living/carbon/current_mob in GLOB.living_mob_list)
+		if(!is_mainship_level(current_mob.z))
+			continue
+		current_mob.apply_effect(3, WEAKEN)
+		shake_camera(current_mob, 10, 2)
+	ai_silent_announcement("Attention performing high-G maneuverer", ";", TRUE)
 
 /obj/structure/machinery/computer/altitude_control_console
 	icon_state = "overwatch"
@@ -170,7 +175,10 @@ var/total_overheat = FALSE
 			. = TRUE
 		if("safety")
 			safety_on = !(safety_on)
-			ai_silent_announcement("Engine Automated Safeguards Disabled", ";", TRUE)
+			if(!safety_on)
+				ai_silent_announcement("Engine Automated Safeguards Disabled", ";", TRUE)
+			if(safety_on)
+				ai_silent_announcement("Engine Automated Safeguards Enabled", ";", TRUE)
 			message_admins("[key_name(user)] has changed the engines safety toggle to [safety_on].")
 			. = TRUE
 
@@ -192,8 +200,8 @@ var/total_overheat = FALSE
 		shake_camera(current_mob, 10, 2)
 	ai_silent_announcement("Attention: Performing high-G manoeuvre", ";", TRUE)
 	if(!safety_on)
-		primary_engine_freq = rand(0, 2)
-		secondary_engine_freq = rand(0, 2)
+		primary_engine_freq = rand(0, 200)
+		secondary_engine_freq = rand(0, 200)
 	if(!skillcheck(usr, SKILL_NAVIGATIONS, SKILL_NAVIGATIONS_EXPERT))
 		to_chat(usr, SPAN_WARNING("Your calcuations suggest the engine frequencies must be set to [primary_engine_freq] and [secondary_engine_freq]"))
 
@@ -218,6 +226,7 @@ var/total_overheat = FALSE
 	data["freq1g"] = primary_engine_freq_guess
 	data["freq2g"] = secondary_engine_freq_guess
 	data["EngineEfficiency"] = engine_efficiency
+	data["temp"] = GLOB.ship_temp
 
 	return data
 
@@ -226,14 +235,13 @@ var/total_overheat = FALSE
 
 	if(.)
 		return
-	var/mob/user = usr
 	switch(action)
 		if("p_freq")
-			engine_efficiency = (abs(primary_engine_freq_guess / primary_engine_freq) + abs(secondary_engine_freq_guess / secondary_engine_freq)) / 2
+			primary_engine_freq = params["freq1g"]
 		if("s_freq")
-			engine_efficiency = (abs(primary_engine_freq_guess / primary_engine_freq) + abs(secondary_engine_freq_guess / secondary_engine_freq)) / 2
+
 		if("calculate")
-			engine_efficiency = (abs(primary_engine_freq_guess / primary_engine_freq) + abs(secondary_engine_freq_guess / secondary_engine_freq)) / 2
+			engine_efficiency = ((abs(primary_engine_freq_guess / primary_engine_freq) + abs(secondary_engine_freq_guess / secondary_engine_freq)) / 100) / 2
 	add_fingerprint(usr)
 
 
