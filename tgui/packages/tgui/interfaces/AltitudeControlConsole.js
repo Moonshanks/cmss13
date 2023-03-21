@@ -12,19 +12,30 @@ export const AltitudeControlConsole = (_props, context) => {
         <Section title="Engine Temperature">
           <Box textAlign="center">
             <ProgressBar
-              width="100%"
+              width="180%"
               minValue={0}
-              maxValue={100}
+              maxValue={180}
               value={data.temp}
               ranges={{
                 good: [-Infinity, 50],
-                bad: [51, Infinity],
+                bad: [100, Infinity],
               }}>
               <Box textAlign="center">{data.temp}% to overheat</Box>
             </ProgressBar>
           </Box>
         </Section>
         <Section title="Altitude Control">
+          {
+            <Button
+              fontSize="20px"
+              textAlign="center"
+              fluid
+              disabled={data.saftey === true}
+              content="Saftey Toggle"
+              iconPosition="right"
+              onClick={() => act('saftey')}
+            />
+          }
           {
             <Button
               fontSize="20px"

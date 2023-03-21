@@ -12,7 +12,7 @@ GLOBAL_VAR_INIT(alt_ctrl_disabled, FALSE)
 //Defines how much to heat the engines or cool them by, and when to overheat
 #define COOLING -10
 #define OVERHEAT_COOLING -5
-#define HEATING 10
+#define HEATING 15
 #define OVERHEAT 100
 
 //Has the ships temperature set to 0 on startup, sets the global default var to med
@@ -33,15 +33,18 @@ var/secondary_engine_freq_guess = 0
 //Handles whether or not the ship can overheat - enables and disables the Navigation Officers controls
 var/saftey_on = TRUE
 
-//the check for the calculate button being pressed
-var/calculate = FALSE
+//Handles if the console has totally broken down (reached 200% overheat)
+var/total_overheat = FALSE
 /obj/structure/machinery/computer/engine_control_console
 	icon_state = "overwatch"
 	name = "Engine Control Console"
 	desc = "The E.C.C console monitors, regulates, and updates the ships thrust vectors and engine perameters. It's only rocket science."
 
-/obj/structure/machinery/computer/altitude_control_console/attack_hand()
+/obj/structure/machinery/computer/engine_control_console/attack_hand()
 	. = ..()
+	if(total_overheat)
+		to_chat(usr, SPAN_WARNING("ARES has locked this console due to total malfunction of the vessles engine cooling pumps."))
+		return
 	if(!skillcheck(usr, SKILL_NAVIGATIONS, SKILL_NAVIGATIONS_MASTER))
 		to_chat(usr, SPAN_WARNING("A window of complex engine thrust calculations opens up. You have no idea what you are doing and quickly close it."))
 		return
@@ -56,9 +59,12 @@ var/calculate = FALSE
 //the next bit handles the logic for the navigations minigame. It takes how close the two "frequencies" are to the true frequency as a percentage, and uses the average of these two percentages to edit the "engine_efficiency" var.
 /obj/structure/machinery/computer/engine_control_console/process()
 	. = ..()
-	if(calculate)
-		engine_efficiency = (abs(primary_engine_freq_guess / primary_engine_freq) + abs(secondary_engine_freq_guess / secondary_engine_freq)) / 2
-		calculate = FALSE
+	if(GLOB.ship_temp == 200)
+		total_overheat = TRUE
+		ai_announcement("ALERT: Total Failure of engine cooling systems. Boosting to higher orbit. Restricting all orbital manouvers")
+		GLOB.ship_alt = SHIP_ALT_HIGH
+
+
 /obj/structure/machinery/computer/altitude_control_console
 	icon_state = "overwatch"
 	name = "Altitude Control Console"
@@ -66,12 +72,19 @@ var/calculate = FALSE
 
 /obj/structure/machinery/computer/altitude_control_console/attack_hand()
 	. = ..()
+	if(total_overheat)
+		to_chat(usr, SPAN_WARNING("ARES has locked this console due to total malfunction of the vessles engine cooling pumps."))
+		return
 	if(!skillcheck(usr, SKILL_NAVIGATIONS, SKILL_NAVIGATIONS_TRAINED))
 		to_chat(usr, SPAN_WARNING("A window of complex orbital math opens up. You have no idea what you are doing and quickly close it."))
 		return
 	if(GLOB.alt_ctrl_disabled)
 		to_chat(usr, SPAN_WARNING("The Altitude Control Console has been locked by ARES due to Delta Alert."))
 		return
+	if(GLOB.alt_ctrl_disabled)
+		to_chat(usr, SPAN_WARNING("The Altitude Control Console has been locked by ARES due to Delta Alert."))
+		return
+	tgui_interact(usr)
 	tgui_interact(usr)
 
 /obj/structure/machinery/computer/altitude_control_console/Initialize()
@@ -99,11 +112,11 @@ var/calculate = FALSE
 	if(!temperature_change)
 		switch(GLOB.ship_alt)
 			if(SHIP_ALT_LOW)
-				temperature_change = HEATING
+				temperature_change = (HEATING * engine_efficiency)
 			if(SHIP_ALT_MED)
-				temperature_change = COOLING
+				temperature_change = (COOLING / engine_efficiency)
 			if(SHIP_ALT_HIGH)
-				temperature_change = COOLING
+				temperature_change = (COOLING / engine_efficiency)
 	GLOB.ship_temp = Clamp(GLOB.ship_temp += temperature_change, 0, 180)
 	if(prob(50))
 		return
@@ -145,14 +158,24 @@ var/calculate = FALSE
 	switch(action)
 		if("low_alt")
 			change_altitude(user, SHIP_ALT_LOW)
+			message_admins("[key_name(user)] has changed the ship's altitude to [action].")
 			. = TRUE
 		if("med_alt")
 			change_altitude(user, SHIP_ALT_MED)
+			message_admins("[key_name(user)] has changed the ship's altitude to [action].")
 			. = TRUE
 		if("high_alt")
 			change_altitude(user, SHIP_ALT_HIGH)
+			message_admins("[key_name(user)] has changed the ship's altitude to [action].")
 			. = TRUE
-	message_admins("[key_name(user)] has changed the ship's altitude to [action].")
+		if("saftey")
+			if(saftey_on = TRUE)
+				saftey_on = FALSE
+			if(saftey_on = FALSE)
+				saftey_on = TRUE
+			ai_silent_announcement("Engine Automated Safeguards Disabled", ";", TRUE)
+			message_admins("[key_name(user)] has changed the engines saftey toggle to [saftey_on].")
+			. = TRUE
 
 	add_fingerprint(usr)
 
@@ -164,7 +187,7 @@ var/calculate = FALSE
 		return
 	GLOB.ship_alt = new_altitude
 	TIMER_COOLDOWN_START(src, COOLDOWN_ALTITUDE_CHANGE, 90 * engine_efficiency SECONDS)
-	GLOB.ship_temp += 30
+	GLOB.ship_temp += (30 * engine_efficiency)
 	for(var/mob/living/carbon/current_mob in GLOB.living_mob_list)
 		if(!is_mainship_level(current_mob.z))
 			continue
@@ -174,6 +197,47 @@ var/calculate = FALSE
 	if(!saftey_on)
 		primary_engine_freq = rand(0, 2)
 		secondary_engine_freq = rand(0, 2)
+	if(!skillcheck(usr, SKILL_NAVIGATIONS, SKILL_NAVIGATIONS_EXPERT))
+		to_chat(usr, SPAN_WARNING("Your calcuations suggest the engine frequencies must be set to [primary_engine_freq] and [secondary_engine_freq]"))
+
+//TGUI stuff for the engine_control_console
+
+/obj/structure/machinery/computer/engine_control_console/tgui_interact(mob/user, datum/tgui/ui)
+	ui = SStgui.try_update_ui(user, src, ui)
+	if(!ui)
+		ui = new(user, src, "EngineControlConsole", "[src.name]")
+		ui.open()
+
+/obj/structure/machinery/computer/engine_control_console/ui_state(mob/user)
+	return GLOB.not_incapacitated_and_adjacent_state
+
+/obj/structure/machinery/computer/engine_control_console/ui_status(mob/user, datum/ui_state/state)
+	. = ..()
+	if(inoperable())
+		return UI_CLOSE
+
+/obj/structure/machinery/computer/engine_control_console/ui_data(mob/user)
+	var/list/data = list()
+	data["freq1g"] = primary_engine_freq_guess
+	data["freq2g"] = secondary_engine_freq_guess
+	data["EngineEfficiency"] = engine_efficiency
+
+	return data
+
+/obj/structure/machinery/computer/altitude_control_console/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+	. = ..()
+
+	if(.)
+		return
+	var/mob/user = usr
+	switch(action)
+		if("p_freq")
+			engine_efficiency = (abs(primary_engine_freq_guess / primary_engine_freq) + abs(secondary_engine_freq_guess / secondary_engine_freq)) / 2
+		if("s_freq")
+			engine_efficiency = (abs(primary_engine_freq_guess / primary_engine_freq) + abs(secondary_engine_freq_guess / secondary_engine_freq)) / 2
+		if("calculate")
+			engine_efficiency = (abs(primary_engine_freq_guess / primary_engine_freq) + abs(secondary_engine_freq_guess / secondary_engine_freq)) / 2
+	add_fingerprint(usr)
 
 
 //sets explosion chance and size, recommend you have this equal to a glob variable or something that changes.
@@ -182,8 +246,8 @@ var/explosion_power = 50
 var/explosion_falloff = 50
 
 //for the record I have no idea why these global vars need to be set on init when they are.. already set on init. Just Elsehwere in the code.
-GLOBAL_VAR_INIT(exploding_landmarks, 0)
-GLOBAL_VAR_INIT(shipside_apc_locations, 0)
+GLOBAL_LIST_EMPTY(exploding_landmarks)
+GLOBAL_LIST_EMPTY(shipside_apc_locations)
 
 
 //This is just a proc so that anyone can explode a part of the ship whenever.
