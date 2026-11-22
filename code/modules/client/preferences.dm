@@ -1992,7 +1992,6 @@ var/const/MAX_SAVE_SLOTS = 10
 
 	return FALSE
 
-
 /// Transfers both physical characteristics and character information to character
 /datum/preferences/proc/copy_all_to(mob/living/carbon/human/character, job_title, is_late_join = FALSE, check_datacore = FALSE)
 	if(!istype(character))
