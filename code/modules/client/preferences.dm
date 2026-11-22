@@ -116,6 +116,7 @@ var/const/MAX_SAVE_SLOTS = 10
 	var/synth_status = WHITELIST_NORMAL
 
 	//character preferences
+	var/character_id = null
 	var/real_name //our character's name
 	var/be_random_name = FALSE //whether we are a random name every round
 	var/human_name_ban = FALSE
@@ -257,6 +258,7 @@ var/const/MAX_SAVE_SLOTS = 10
 		ooccolor = CONFIG_GET(string/ooc_color_default)
 	gender = pick(MALE, FEMALE)
 	real_name = random_name(gender)
+	character_id = generate_uuid()
 	gear = list()
 
 /datum/preferences/proc/client_reconnected(client/C)
@@ -1977,21 +1979,28 @@ var/const/MAX_SAVE_SLOTS = 10
 /// Loads appropriate character slot for the given job as assigned in preferences.
 /datum/preferences/proc/find_assigned_slot(job_title, is_late_join = FALSE)
 	if(toggle_prefs & (is_late_join ? TOGGLE_LATE_JOIN_CURRENT_SLOT : TOGGLE_START_JOIN_CURRENT_SLOT))
-		return
+		return FALSE
+
 	var/slot_for_job = pref_job_slots[job_title]
 	switch(slot_for_job)
 		if(JOB_SLOT_RANDOMISED_SLOT)
 			be_random_body = TRUE
 			be_random_name = TRUE
+			return TRUE
 		if(1 to MAX_SAVE_SLOTS)
 			load_character(slot_for_job)
+
+	return FALSE
+
 
 /// Transfers both physical characteristics and character information to character
 /datum/preferences/proc/copy_all_to(mob/living/carbon/human/character, job_title, is_late_join = FALSE, check_datacore = FALSE)
 	if(!istype(character))
 		return
 
-	find_assigned_slot(job_title, is_late_join)
+	var/randomised_slot = find_assigned_slot(job_title, is_late_join)
+	character.character_id = randomised_slot || !character_id ? generate_uuid() : character_id
+
 	if(check_datacore && !(be_random_body && be_random_name))
 		for(var/datum/data/record/record as anything in GLOB.data_core.locked)
 			if(record.fields["name"] == real_name)

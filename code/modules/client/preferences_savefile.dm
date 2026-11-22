@@ -406,8 +406,10 @@
 		default_slot = slot
 		S["default_slot"] << slot
 	S.cd = "/character[slot]"
+	character_id = null
 
 	//Character
+	S["character_id"] >> character_id
 	S["OOC_Notes"] >> metadata
 	S["real_name"] >> real_name
 	S["name_is_always_random"] >> be_random_name
@@ -552,9 +554,14 @@
 	if(!path) return 0
 	var/savefile/S = new /savefile(path)
 	if(!S) return 0
+
+	if(!character_id)
+		character_id = generate_uuid()
+
 	S.cd = "/character[default_slot]"
 
 	//Character
+	S["character_id"] << character_id
 	S["OOC_Notes"] << metadata
 	S["real_name"] << real_name
 	S["name_is_always_random"] << be_random_name
